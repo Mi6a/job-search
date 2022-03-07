@@ -103,7 +103,16 @@ void OrderCacheImpl::cancelOrdersForSecIdWithMinimumQty(const std::string& secur
    }
 }
 
-
+//
+std::vector<Order> OrderCacheImpl::getAllOrders() const {
+   std::vector<Order> orders;
+   for (auto po : m_orders) {
+      OrderImpl* oi = po.second.get();
+      Order ord(*(oi->m_id), *(oi->m_sec), (oi->m_side ? strBuy : strSell), oi->m_qty, *(oi->m_user), *(oi->m_comp));
+      orders.emplace_back(std::move(ord));
+   }
+   return orders;
+}
 
 
 
