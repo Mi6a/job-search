@@ -85,8 +85,22 @@ void OrderCacheImpl::cancelOrdersForUser(const std::string& user) {
 void OrderCacheImpl::cancelOrdersForSecIdWithMinimumQty(const std::string& securityId, unsigned int minQty) {
    StrShared ss = make_shared<string>(securityId);
    auto secFound = m_securs.find(ss);
-   
-   std::vector<StrShared> vs;
+   if (m_securs.end() == secFound)
+      return; // no such security
+   // first count number of orders
+   unsigned count = 0;
+   for (auto so : secFound->second) {
+      if (so->m_qty >= minQty)
+         count++;
+   }
+   std::vector<StrShared> vs(count);
+   for (auto so : secFound->second) {
+      if (so->m_qty >= minQty)
+         vs.push_back(so->m_id);
+   }
+   for (auto id : vs) {
+      cancelOrder(id);
+   }
 }
 
 
