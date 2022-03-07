@@ -103,6 +103,15 @@ void OrderCacheImpl::cancelOrdersForSecIdWithMinimumQty(const std::string& secur
    }
 }
 
+// return the total qty that can match for the security id
+unsigned  OrderCacheImpl::getMatchingSizeForSecurity(const std::string& securityId) {
+   StrShared ss = make_shared<string>(securityId);
+   auto secFound = m_securs.find(ss);
+   if (m_securs.end() == secFound)
+      return 0; // no such security
+   // create hash of Comp-> buy/sell
+}
+
 //
 std::vector<Order> OrderCacheImpl::getAllOrders() const {
    std::vector<Order> orders;
