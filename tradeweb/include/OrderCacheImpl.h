@@ -9,9 +9,19 @@
 
 // Implementation selection explanation:
 //   1. The decisions were made toward maximizing the speed at the memory expense
-//   2. 
+//   2. to use find() template of cxx20 features in unordered_set and unordered_map, 
+//      unordered_set, unordered_map and xhash files were copied to
+//      private dir cpp20 and cpp20 features were enabled (just the used ones) by 
+//      commenting - see "private change"
 //   2. Orders are kept in the unordered_set, and hashed/searched by m_orderId
-//   3. In addition we 
+//   3. In addition to make search faster, we keep 2 additional hashes, 
+//      indexed by m_user and m_securityId
+//   4. To make search/compare even more faster and to avoid strings duplication,
+//      we keep all strings in single instance and all structures will use shared_ptr<string>
+//   5. There're certain improvements, that were not implemented due to time constraints:
+//       - optimizing multithreading;
+//       - improving memory management, etc.
+//       hopefully those can be discussed during the further interview steps
 
 //
 class OrderCacheImpl : public OrderCacheInterface {
@@ -35,7 +45,7 @@ public:
    virtual std::vector<Order> getAllOrders() const;
 
 private:
-/*   using StrShared = std::shared_ptr<std::string>;
+   using StrShared = std::shared_ptr<std::string>;
 
    struct StrSharedEqual {
       using is_transparent = void; // for find() override
@@ -64,8 +74,8 @@ private:
       }
    };
 
-   using PtrStrSet = std::unordered_set<StrShared, StrSharedHash, StrSharedEqual>; 
-*/
+   //using PtrStrSet = std::unordered_set<StrShared, StrSharedHash, StrSharedEqual>; 
+
    using PtrOrder = std::shared_ptr<Order>;
 
    struct PtrOrderEqual {
@@ -95,8 +105,10 @@ private:
       }
    };
 
+   using PtrOrderSet = std::unordered_set<PtrOrder, PtrOrderHash, PtrOrderEqual>;
+   using StrOrdersMap = std::unordered_map<StrShared, PtrOrderSet, StrSharedHash, StrSharedEqual>;
 
-
-   using PtrOrderSet = std::unordered_set<PtrOrder, PtrSharedHash, PtrSharedEqual>;
-
+   PtrOrderSet m_orders;
+   StrOrdersMap m_users;
+   StrOrdersMap m_securs;
 };

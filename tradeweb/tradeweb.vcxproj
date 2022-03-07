@@ -144,6 +144,10 @@
   <ItemGroup>
     <ClCompile Include="tradeweb.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\OrderCache.h" />
+    <ClInclude Include="include\OrderCacheImpl.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
