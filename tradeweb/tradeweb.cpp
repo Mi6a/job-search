@@ -2,6 +2,7 @@
 #include <string>
 #include <memory>
 #include "include/cpp20/unordered_set"
+#include "include/cpp20/unordered_map"
 
 using namespace std::string_literals;
 
@@ -38,19 +39,34 @@ struct StrSharedHash {
 
 using PtrStrSet = std::unordered_set<StrShared, StrSharedHash, StrSharedEqual>;
 
+using PtrStrIntMap = std::unordered_map<StrShared, int, StrSharedHash, StrSharedEqual>;
+
 //
 int main()
 {
-   PtrStrSet pss;
    std::string s1 = "Serg"s;
    auto ss1 = std::make_shared<std::string>(s1);
-   auto res = pss.insert(ss1);
-   cout << "Inserted: " << (res.second? "yes" : "no") << endl;
-   auto found = pss.find(s1);
+   // testing set with cxx20
+   PtrStrSet pss;
+   auto resS = pss.insert(ss1);
+   cout << "Inserted: " << (resS.second? "yes" : "no") << endl;
+   auto foundS = pss.find(s1);
    cout << "Found: ";
-   if (found != pss.end())
-      cout << "yes: " << **found << endl;
+   if (foundS != pss.end())
+      cout << "yes: " << **foundS << endl;
    else
       cout << "no" << endl;
+
+   // testing map with cxx20
+   PtrStrIntMap msi1;
+   auto resM = msi1.insert({ss1, 2});
+   cout << "Inserted: " << (resM.second ? "yes" : "no") << endl;
+   auto foundM = msi1.find(s1);
+   cout << "Found: ";
+   if (foundM != msi1.end())
+      cout << "yes: " << (*foundM).second << endl;
+   else
+      cout << "no" << endl;
+
    return 0;
 }
