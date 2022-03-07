@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.32002.261
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tradeweb", "tradeweb.vcxproj", "{8A44B2FE-6A70-43E6-9A41-B7AB92BAB925}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8A44B2FE-6A70-43E6-9A41-B7AB92BAB925}.Debug|x64.ActiveCfg = Debug|x64
+		{8A44B2FE-6A70-43E6-9A41-B7AB92BAB925}.Debug|x64.Build.0 = Debug|x64
+		{8A44B2FE-6A70-43E6-9A41-B7AB92BAB925}.Debug|x86.ActiveCfg = Debug|x64
+		{8A44B2FE-6A70-43E6-9A41-B7AB92BAB925}.Debug|x86.Build.0 = Debug|x64
+		{8A44B2FE-6A70-43E6-9A41-B7AB92BAB925}.Release|x64.ActiveCfg = Release|x64
+		{8A44B2FE-6A70-43E6-9A41-B7AB92BAB925}.Release|x64.Build.0 = Release|x64
+		{8A44B2FE-6A70-43E6-9A41-B7AB92BAB925}.Release|x86.ActiveCfg = Release|Win32
+		{8A44B2FE-6A70-43E6-9A41-B7AB92BAB925}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AECD7764-6737-4843-9C17-10438EF066C9}
+	EndGlobalSection
+EndGlobal
