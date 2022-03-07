@@ -4,6 +4,8 @@
 #include "include/cpp20/unordered_set"
 #include "include/cpp20/unordered_map"
 
+#include "OrderCacheImpl.h"
+
 using namespace std::string_literals;
 
 using std::cout; using std::cin; using std::endl;
@@ -42,7 +44,7 @@ using PtrStrSet = std::unordered_set<StrShared, StrSharedHash, StrSharedEqual>;
 using PtrStrIntMap = std::unordered_map<StrShared, int, StrSharedHash, StrSharedEqual>;
 
 //
-int main()
+int test()
 {
    std::string s1 = "Serg"s;
    auto ss1 = std::make_shared<std::string>(s1);
@@ -69,4 +71,8 @@ int main()
       cout << "no" << endl;
 
    return 0;
+}
+
+int main() {
+   OrderCacheImpl orders;
 }

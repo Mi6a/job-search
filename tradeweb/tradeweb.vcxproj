@@ -142,11 +142,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="OrderCacheImpl.cpp" />
     <ClCompile Include="tradeweb.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\OrderCache.h" />
-    <ClInclude Include="include\OrderCacheImpl.h" />
+    <ClInclude Include="OrderCache.h" />
+    <ClInclude Include="OrderCacheImpl.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

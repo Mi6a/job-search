@@ -18,12 +18,15 @@
     <ClCompile Include="tradeweb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="OrderCacheImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\OrderCache.h">
+    <ClInclude Include="OrderCache.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\OrderCacheImpl.h">
+    <ClInclude Include="OrderCacheImpl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
