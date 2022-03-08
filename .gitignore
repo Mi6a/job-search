@@ -1,5 +1,7 @@
 .vs
 Debug
 Release
+x64_Debug
+x64_Release
 x64
 *.vcxproj.user
