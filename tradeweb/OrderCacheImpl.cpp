@@ -12,6 +12,7 @@ static const std::string strSell{"Sell"s};
 //
 void OrderCacheImpl::addOrder(Order order) {
    StrShared id = make_shared<string>(order.orderId());
+   GuardWrite gw(m_lock);
    auto orderRes = m_orders.insert({id, OrderShared{}});
    if (!orderRes.second)
       return; // already exist
@@ -44,6 +45,7 @@ void OrderCacheImpl::addOrder(Order order) {
 //
 void OrderCacheImpl::cancelOrder(const std::string& orderId) {
    StrShared ss = make_shared<string>(orderId);
+   GuardWrite gw(m_lock);
    cancelOrder(ss);
 }
 
@@ -73,6 +75,7 @@ void OrderCacheImpl::cancelOrder(StrShared orderId) {
 // remove all orders in the cache for this user
 void OrderCacheImpl::cancelOrdersForUser(const std::string& user) {
    StrShared su = make_shared<string>(user);
+   GuardWrite gw(m_lock);
    auto userFound = m_users.find(su);
    if (m_users.end() == userFound)
       return; // there is no such user
@@ -85,6 +88,7 @@ void OrderCacheImpl::cancelOrdersForUser(const std::string& user) {
 // remove all orders in the cache for this security with qty >= minQty
 void OrderCacheImpl::cancelOrdersForSecIdWithMinimumQty(const std::string& securityId, unsigned int minQty) {
    StrShared ss = make_shared<string>(securityId);
+   GuardWrite gw(m_lock);
    auto secFound = m_securs.find(ss);
    if (m_securs.end() == secFound)
       return; // no such security
@@ -102,6 +106,7 @@ void OrderCacheImpl::cancelOrdersForSecIdWithMinimumQty(const std::string& secur
 // return the total qty that can match for the security id
 unsigned  OrderCacheImpl::getMatchingSizeForSecurity(const std::string& securityId) {
    StrShared ss = make_shared<string>(securityId);
+   GuardRead gw(m_lock);
    auto secFound = m_securs.find(ss);
    if (m_securs.end() == secFound)
       return 0; // no such security
@@ -143,6 +148,7 @@ unsigned  OrderCacheImpl::getMatchingSizeForSecurity(const std::string& security
 //
 std::vector<Order> OrderCacheImpl::getAllOrders() const {
    std::vector<Order> orders;
+   GuardRead gw(m_lock);
    for (auto po : m_orders) {
       OrderImpl* oi = po.second.get();
       Order ord(*(oi->m_id), *(oi->m_sec), (oi->m_side ? strBuy : strSell), oi->m_qty, *(oi->m_user), *(oi->m_comp));

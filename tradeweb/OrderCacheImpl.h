@@ -3,6 +3,7 @@
 #include <memory>
 #include <unordered_set>
 #include <unordered_map>
+#include <shared_mutex>
 
 #include "OrderCache.h"
 
@@ -14,8 +15,9 @@
 //   4. To make search/compare even more faster and to avoid strings duplication,
 //      we keep all strings in single instance and all structures will use shared_ptr<string>
 //   5. There're certain improvements, that were not implemented due to time and C++ version constraints:
-//       - optimizing multithreading;
+//       - optimizing multithreading - currently shared locks are used;
 //       - improving memory management for faster deletion/allocation, etc.
+//       - cxx20 features will allow to avoid memory allocations just for the search 
 //       hopefully those can be discussed during the further interview steps
 
 // ASSUMPTIONS:
@@ -139,6 +141,13 @@ private:
    StrSharedSet   m_companies;
    StrUserMap     m_users;
    SecOrdersMap   m_securs;
+
+   // naive multithread impl - for a moment let's just use common locks
+   using Lock = std::shared_mutex;
+   using GuardWrite = std::unique_lock<Lock>;
+   using GuardRead = std::shared_lock<Lock>;
+
+   mutable Lock m_lock;
 
    // structures just for getMatchingSizeForSecurity()
    struct CompQty {
