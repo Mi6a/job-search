@@ -53,7 +53,7 @@ private:
       using is_transparent = void;  
 
       bool operator()(const StrShared& ss1, const StrShared& ss2) const  noexcept {
-         return ss1.get() == ss2.get();
+         return *ss1 == *ss2;
       }
       
       bool operator()(const std::string& s1, const StrShared& ss2) const  noexcept {
@@ -99,7 +99,7 @@ private:
       using is_transparent = void;
 
       bool operator()(const OrderShared& o1, const OrderShared& o2) const  noexcept {
-         return o1.get() == o2.get();
+         return *(o1->m_id) == *(o2->m_id);
       }
       
       bool operator()(const std::string& s1, const OrderShared& o2) const  noexcept {
@@ -139,4 +139,12 @@ private:
    StrSharedSet   m_companies;
    StrUserMap     m_users;
    SecOrdersMap   m_securs;
+
+   // structures just for getMatchingSizeForSecurity()
+   struct CompQty {
+      StrShared _comp;
+      unsigned _qty;
+   };
+   using CompQtyList = std::list<CompQty>;
+
 };

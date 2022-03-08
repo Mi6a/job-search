@@ -1,3 +1,5 @@
+#include <list>
+
 #include "OrderCacheImpl.h"
 
 using std::string;
@@ -9,30 +11,29 @@ static const std::string strSell{"Sell"s};
 
 //
 void OrderCacheImpl::addOrder(Order order) {
-   StrShared ss = make_shared<string>(order.orderId());
-   auto orderRes = m_orders.insert({ss, OrderShared{}});
+   StrShared id = make_shared<string>(order.orderId());
+   auto orderRes = m_orders.insert({id, OrderShared{}});
    if (!orderRes.second)
       return; // already exist
    OrderShared sh_ord = make_shared<OrderImpl>();
    orderRes.first->second = sh_ord;
-   sh_ord->m_id = ss;
+   sh_ord->m_id = id;
    // assign user
-   // use same ss to avoid allocating many strings
-   *ss = order.user();
-   auto userRes = m_users.insert({ss, User{}});
+   StrShared user = make_shared<string>(order.user());
+   auto userRes = m_users.insert({user, User{}});
    auto userIter = userRes.first;
    if (userRes.second) { // new user
       // have to search for the company
-      *ss = order.company();
-      auto compRes = m_companies.insert(ss);
+      StrShared comp = make_shared<string>(order.company());
+      auto compRes = m_companies.insert(comp);
       userIter->second._comp = *(compRes.first);
    }
    sh_ord->m_user = userIter->first;
    sh_ord->m_comp = userIter->second._comp;
    userIter->second._orders.insert(sh_ord);
    // assign security
-   *ss = order.securityId();
-   auto compRes = m_securs.insert({ss, OrderSet{}});
+   StrShared sec = make_shared<string>(order.securityId());
+   auto compRes = m_securs.insert({sec, OrderSet{}});
    auto compIter = compRes.first;
    sh_ord->m_sec = compIter->first;
    compIter->second.insert(sh_ord);
@@ -87,18 +88,13 @@ void OrderCacheImpl::cancelOrdersForSecIdWithMinimumQty(const std::string& secur
    auto secFound = m_securs.find(ss);
    if (m_securs.end() == secFound)
       return; // no such security
-   // first count number of orders
-   unsigned count = 0;
+   // first gather all ids
+   std::list<StrShared> lo;
    for (auto so : secFound->second) {
       if (so->m_qty >= minQty)
-         count++;
+         lo.push_back(so->m_id);
    }
-   std::vector<StrShared> vs(count);
-   for (auto so : secFound->second) {
-      if (so->m_qty >= minQty)
-         vs.push_back(so->m_id);
-   }
-   for (auto id : vs) {
+   for (auto id : lo) {
       cancelOrder(id);
    }
 }
@@ -109,7 +105,39 @@ unsigned  OrderCacheImpl::getMatchingSizeForSecurity(const std::string& security
    auto secFound = m_securs.find(ss);
    if (m_securs.end() == secFound)
       return 0; // no such security
-   // create hash of Comp-> buy/sell
+   CompQtyList buy;
+   CompQtyList sell;
+   unsigned total = 0;
+   // for each order find match, what's not matched, add to list
+   for (auto so : secFound->second) {
+      unsigned qtyRest = so->m_qty;
+      CompQtyList& otherSide = so->m_side ? sell : buy;
+      for (auto iter = otherSide.begin(); (otherSide.end() != iter) && (qtyRest > 0); ) {
+         if (iter->_comp != so->m_comp) {
+            unsigned qtyCurr = iter->_qty;
+            unsigned matched = qtyCurr > qtyRest ? qtyRest : qtyCurr;
+            qtyRest -= matched;
+            total += matched;
+            iter->_qty -= matched;
+            if (!iter->_qty)
+               iter = otherSide.erase(iter);
+            else
+               ++iter;
+         }
+         else {
+            ++iter;
+         }
+      }
+      if (qtyRest) { // still have unmatched qty - add it to same company
+         CompQtyList& sameSide = so->m_side ? buy : sell;
+         auto iterComp = std::find_if(sameSide.begin(), sameSide.end(), [&so](CompQty& cq) { return so->m_comp == cq._comp; });
+         if (sameSide.end() == iterComp)
+            sameSide.push_front({so->m_comp, qtyRest});
+         else
+            iterComp->_qty += qtyRest;
+      }
+   }
+   return total;
 }
 
 //
