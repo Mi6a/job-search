@@ -100,7 +100,7 @@ int main()
 {
    GasStation gs{10};
    gs.start();
-   std::this_thread::sleep_for(5s);
+   std::this_thread::sleep_for(30s);
    gs.stop();
    gs.printResults();
 }
@@ -110,6 +110,7 @@ void Car::run() {
    while (!_gs->stopped()) {
       std::unique_lock<mutex> lock(_mtx);
       _cv.wait(lock, [this] { return _wakeup || _gs->stopped(); });
+      _wakeup = false;
       if (_gs->stopped())
          break;
       _pump = _gs->occupy();
@@ -122,7 +123,6 @@ void Car::run() {
       _gs->release(_pump);
       _pump = -1;
       _gs->notifyReleasePump();
-      _wakeup = false;
    }
    _gs->carFinished();
 }
