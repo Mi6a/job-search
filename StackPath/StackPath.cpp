@@ -86,8 +86,10 @@ private:
    Pump _pumps[PumpCount];
 
    using CarList = list<Car>;
+   using CarIter = CarList::iterator;
+
    CarList _cars;
-   CarList::iterator  _head; // current head of the line
+   atomic<CarIter>  _head; // current head of the line
    unsigned _numCars;
    atomic<unsigned> _carsFinished; // number of thread cars finished
    bool _timeout; // when 30 sec done 
@@ -185,17 +187,18 @@ void GasStation::release(int n) {
 
 //
 void GasStation::wakeupHeadCar() {
-   std::unique_lock<mutex> lock(_mtx);
-   _head->wakeup();
+   auto iter = _head.load();
+   iter->wakeup();
 }
 
 //
 void GasStation::notifyMovedToPump() {
-   std::unique_lock<mutex> lock(_mtx);
-   _head++;
-   if (_cars.end() == _head)
-      _head = _cars.begin();
-   _head->wakeup();
+   auto iter = _head.load();
+   iter++;
+   if (_cars.end() == iter)
+      iter = _cars.begin();
+   _head = iter;
+   iter->wakeup();
 }
 
 //
