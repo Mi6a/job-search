@@ -1,16 +1,17 @@
 #include <iostream>
 #include <atomic>
-#include <memory>
-#include <list>
+#include <vector>
 #include <thread>
 #include <chrono>
 #include <mutex>
 #include <condition_variable>
 
+#define NDEBUG
+#include <cassert>
+
 using std::cout; using std::endl;
 using std::atomic;
-using std::shared_ptr;
-using std::list;
+using std::vector;
 using std::thread;
 using std::mutex;
 
@@ -19,16 +20,20 @@ using namespace std::chrono_literals;
 //
 class Pump {
 public:
-   Pump() : _occupied(false), _countFillUps(0) {}
+   Pump() { clear(); }
 
-   bool occupy();
-   void release();
+   bool occupy(int idCar);
+   void release(int idCar);
+   void clear() { _occupied = false; _countFillUps = 0; _idCar = -1; }
 
    unsigned countFillUps() { return _countFillUps; }
 
+   int car() const { return _idCar; }
+
 private:
-   atomic<bool> _occupied; // false/true/ - vacant/occupied
+   bool _occupied; // false/true/ - vacant/occupied
    unsigned _countFillUps;
+   int _idCar; // for debugging purposes
 };
 
 class GasStation; 
@@ -36,7 +41,10 @@ class GasStation;
 //
 class Car {
 public:
-   Car(unsigned id, GasStation* gs) : _id(id), _pump(-1), _countFillUps(0), _gs(gs), _wakeup(false) {}
+   Car() : _id(0), _pump(-1), _countFillUps(0), _gs(0), _wakeup(false) {}
+   Car(int id, GasStation* gs) : _id(id), _pump(-1), _countFillUps(0), _gs(gs), _wakeup(false) {}
+   
+   void set(int id, GasStation* gs);
 
    static void start(Car* c);
    void run();
@@ -45,10 +53,12 @@ public:
 
    unsigned countFillUps() { return _countFillUps; }
 
-   unsigned id() const { return _id; }
+   int id() const { return _id; }
 
 private:
-   const unsigned _id;
+   void fillUp();
+
+   int _id;
    int      _pump; // if -1 - waiting in queue, >= 0 - filling up on that pump
    unsigned _countFillUps;
    GasStation* _gs;
@@ -58,43 +68,47 @@ private:
    std::condition_variable _cv;
 };
 
+enum EventType {}; // for logging
+
 //
 class GasStation {
 public:
-   GasStation(unsigned numCars);
+   GasStation(int numCars);
 
    void start();
    void stop();
    bool stopped() const { return _timeout; }
 
-   void wakeupHeadCar();
+   int occupyPump(int idCar); // try to occupy one
+   void releasePump(int idPump, int idCar);
 
-   int occupy(); // try to occupy one
-   void release(int);
-
-   void notifyMovedToPump(); // head car notifies that he moved to pump 
-   void notifyReleasePump(); // car notifies that it released the pump
+   void notifyMovedToPump(int idCar, int numPipe); // head car notifies that he moved to pump 
+   void notifyReleasePump(int idCar, int numPipe); // car notifies that it released the pump
 
    void printResults();
 
-   void carFinished() { 
+   void carFinished(int idCar) {
       _carsFinished++;
    }
 
 private:
-   static const unsigned PumpCount = 2;
+   void verifyCarToPump(int idCar, int numPipe);
+
+   static const int PumpCount = 2;
    Pump _pumps[PumpCount];
 
-   using CarList = list<Car>;
-   using CarIter = CarList::iterator;
+   using CarList = vector<Car>;
 
    CarList _cars;
-   atomic<CarIter>  _head; // current head of the line
-   unsigned _numCars;
-   atomic<unsigned> _carsFinished; // number of thread cars finished
+   int  _head; // current index of the head car
+   int _numCars;
+   atomic<int> _carsFinished; // number of thread cars finished
    bool _timeout; // when 30 sec done 
 
-   mutex _mtx;
+   mutex _mxCars; // protect head car setting
+   mutex _mxPump; // use for pump' occupy/release
+   std::condition_variable _cvPump; // use for pump' release events
+
 };
 
 //
@@ -113,20 +127,23 @@ void Car::run() {
       std::unique_lock<mutex> lock(_mtx);
       _cv.wait(lock, [this] { return _wakeup || _gs->stopped(); });
       _wakeup = false;
+      lock.unlock();
       if (_gs->stopped())
          break;
-      _pump = _gs->occupy();
-      if (-1 == _pump)
-         continue;
+      _pump = _gs->occupyPump(_id); // locking 
       // advance to the pump
-      _gs->notifyMovedToPump();
-      std::this_thread::sleep_for(30ms); // fill up
-      _countFillUps++;
-      _gs->release(_pump);
+      _gs->notifyMovedToPump(_id, _pump);
+      fillUp();
+      _gs->notifyReleasePump(_id, _pump);
       _pump = -1;
-      _gs->notifyReleasePump();
    }
-   _gs->carFinished();
+   _gs->carFinished(_id);
+}
+
+//
+void Car::fillUp() {
+   std::this_thread::sleep_for(30ms); // fill up
+   _countFillUps++;
 }
 
 //
@@ -137,32 +154,46 @@ void Car::start(Car* c) {
 
 //
 void Car::wakeup() {
+   std::unique_lock<mutex> lock(_mtx);
    _wakeup = true;
    _cv.notify_one();
 }
 
+void Car::set(int id, GasStation* gs) {
+   _id = id; _pump = -1; _countFillUps = 0; _gs = gs;
+   _wakeup = false;
+}
+
 //
-GasStation::GasStation(unsigned numCars) : _numCars(numCars), _carsFinished(0), _timeout(false) {
-   for (unsigned n = 0; n < numCars; n++) {
-      _cars.emplace_back(n, this);
+GasStation::GasStation(int numCars) : _cars(numCars), _head(0), _numCars(numCars), _carsFinished(0), _timeout(false) {
+   for (int n = 0; n < numCars; n++) {
+      _cars[n].set(n, this);
    }
-   _head = _cars.begin();
 }
 
 // 
 void GasStation::start() {
    // allow for multiple start()/stop() cicles  
-   _head = _cars.begin();
+   std::unique_lock<mutex> lkCars(_mxCars);
+   _head = 0;
    _timeout = false;
    _carsFinished = 0;
+   unsigned headCur = _head;
+   lkCars.unlock();
+   std::unique_lock<mutex> lkPump(_mxPump);
+   _pumps[0].clear();
+   _pumps[1].clear();
+   lkPump.unlock();
    for(Car& cp: _cars)
       Car::start(&cp);
-   wakeupHeadCar();
+   _cars[headCur].wakeup();
 }
 
 //
 void GasStation::stop() {
+   std::unique_lock<mutex> lock(_mxCars); // use it as a barrier
    _timeout = true;
+   lock.unlock();
    for (Car& car : _cars)
       car.wakeup();
    // wait for all car threads to finish
@@ -172,38 +203,49 @@ void GasStation::stop() {
 }
 
 //
-int GasStation::occupy() {
-   for (unsigned n = 0; n < PumpCount; n++) {
-      if (_pumps[n].occupy())
-         return n;
+int GasStation::occupyPump(int idCar) {
+   std::unique_lock<mutex> lock(_mxPump); 
+   while (true) {
+      for (int n = 0; n < PumpCount; n++) {
+         if (_pumps[n].occupy(idCar))
+            return n;
+      }
+      _cvPump.wait(lock);
    }
    return -1; 
 }
 
 //
-void GasStation::release(int n) {
-   _pumps[n].release();
+void GasStation::releasePump(int idPump, int idCar) {
+   assert((idPump >= 0) && (idPump < PumpCount));
+   assert(_pumps[idPump].car() == idCar);
+   _pumps[idPump].release(idCar);
 }
 
 //
-void GasStation::wakeupHeadCar() {
-   auto iter = _head.load();
-   iter->wakeup();
+void GasStation::verifyCarToPump(int idCar, int numPipe) {
+   std::unique_lock<mutex> lock(_mxPump);
+   assert(_pumps[numPipe].car() == idCar);
 }
 
 //
-void GasStation::notifyMovedToPump() {
-   auto iter = _head.load();
-   iter++;
-   if (_cars.end() == iter)
-      iter = _cars.begin();
-   _head = iter;
-   iter->wakeup();
+void GasStation::notifyMovedToPump(int idCar, int numPump) {
+   verifyCarToPump(idCar, numPump);
+   std::unique_lock<mutex> lock(_mxCars);
+   assert(_head == idCar);
+   _head++;
+   if (_head == _numCars)
+      _head = 0;
+   unsigned headCur = _head;
+   lock.unlock(); // avoid taking 2 mutexes at a time
+   _cars[headCur].wakeup();
 }
 
 //
-void GasStation::notifyReleasePump() {
-   wakeupHeadCar();
+void GasStation::notifyReleasePump(int idCar, int numPipe) {
+   std::unique_lock<mutex> lock(_mxPump);
+   releasePump(numPipe, idCar);
+   _cvPump.notify_one(); // at every moment only one should wait
 }
 
 //
@@ -217,17 +259,18 @@ void GasStation::printResults() {
 }
 
 //
-bool Pump::occupy() {
-   bool occupiedNot{false};
-   bool occupy{true};
-
-   bool res = _occupied.compare_exchange_strong(occupiedNot, occupy);
-   if (res)
-      _countFillUps++;
-   return res; 
+bool Pump::occupy(int idCar) {
+   if (_occupied)
+      return false;
+   _occupied = true;
+   _countFillUps++;
+   _idCar = idCar;
+   return true; 
 }
 
 //
-void Pump::release() {
+void Pump::release(int idCar) {
+   assert(_idCar == idCar);
    _occupied = false;
+   _idCar = -1;
 }
